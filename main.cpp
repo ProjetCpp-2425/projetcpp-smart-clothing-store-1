@@ -5,5 +5,5 @@ using namespace std;
 int main()
 {
     cout << "Hello world!" << endl;
-    return ;
+    return 0;
 }
