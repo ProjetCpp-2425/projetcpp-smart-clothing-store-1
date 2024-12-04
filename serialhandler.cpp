@@ -25,21 +25,54 @@ bool SerialHandler::open(const QString &portName) {
     }
 }
 
+#include <QMessageBox>
+
+#include <QMessageBox>
+
 void SerialHandler::handleReadyRead() {
+    static QString buffer; // Tampon pour accumuler les caractères entrants
     QByteArray data = serial.readAll();
-    QString userID = QString(data).trimmed(); // Trim whitespace
+    QString receivedData = QString(data).trimmed(); // Nettoyer les espaces
 
-    qDebug() << "Received ID:" << userID;
+    qDebug() << "Données reçues :" << receivedData;
 
-    // Validate the user ID
-    if (isValidUser(userID)) {
-        serial.write("VALID\n");
-        qDebug() << "ID is valid. Response sent.";
-    } else {
-        serial.write("INVALID\n");
-        qDebug() << "ID is invalid. Response sent.";
+    // Ajouter les données reçues au tampon
+    buffer += receivedData;
+
+    // Vérifier si le tampon contient exactement 4 caractères
+    if (buffer.length() == 4) {
+        QString userID = buffer; // Extraire l'ID complet
+        buffer.clear();          // Réinitialiser le tampon pour la prochaine saisie
+
+        qDebug() << "ID complet reçu :" << userID;
+
+        // Validation de l'ID
+        QString message;
+        if (isValidUser(userID)) {
+            serial.write("VALID\n");
+            message = "ID valide. Réponse envoyée.";
+            qDebug() << message;
+
+            // Afficher une boîte de dialogue une seule fois
+            static bool dialogShown = false; // Indicateur pour éviter des affichages multiples
+            if (!dialogShown) {
+                dialogShown = true;
+                QMessageBox::information(nullptr, "Validation de l'ID utilisateur", message);
+                dialogShown = false; // Réinitialiser pour autoriser une nouvelle boîte de dialogue
+            }
+        } else {
+            serial.write("INVALID\n");
+            message = "ID invalide. Réponse envoyée.";
+            qDebug() << message;
+        }
+    } else if (buffer.length() > 4) {
+        // Gérer les débordements (par exemple, si plus de 4 caractères sont reçus accidentellement)
+        qDebug() << "Tampon débordé. Réinitialisation du tampon.";
+        buffer.clear();
     }
 }
+
+
 
 bool SerialHandler::isValidUser(const QString &userID) {
     QSqlQuery query;
